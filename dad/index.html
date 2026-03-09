@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data AI Analyzer - Análise de Dados com IA por Diogo</title>
+    <meta name="description" content="Ferramenta profissional de análise de dados com inteligência artificial para processar arquivos CSV e Excel">
+    <meta name="author" content="Diogo">
+    <meta name="keywords" content="análise de dados, ia, csv, excel, gráficos, visualização">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .drag-active {
+            background-color: #dbeafe !important;
+            border-color: #3b82f6 !important;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px !important;
+            min-height: 400px !important;
+            background-color: white !important;
+            padding: 10px !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 8px !important;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #3b82f6, #2563eb);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
+    <header class="bg-white/90 backdrop-blur-md shadow-xl border-b border-gray-100">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="gradient-bg p-3 rounded-xl">
+                        <i class="fas fa-chart-line text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Data AI Analyzer</h1>
+                        <p class="text-sm text-gray-600">Análise Inteligente de Dados</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <p class="text-sm font-semibold text-gray-700">Desenvolvido por</p>
+                        <p class="text-lg font-bold text-purple-600">Diogo</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <i class="fas fa-brain text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <section class="mb-8">
+            <div class="bg-white rounded-xl shadow-xl p-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+                    <i class="fas fa-cloud-upload-alt text-blue-600 mr-3"></i>
+                    Carregue Seu Arquivo para Análise
+                </h2>
+                
+                <div id="dropZone" class="border-3 border-dashed border-gray-300 rounded-2xl p-16 text-center hover:border-blue-500 transition-all duration-300 bg-gradient-to-br from-gray-50 to-blue-50 card-shadow">
+                    <div class="mb-6">
+                        <i class="fas fa-file-csv text-6xl text-blue-500 mb-4"></i>
+                        <i class="fas fa-file-excel text-6xl text-green-500 mb-4 ml-4"></i>
+                    </div>
+                    <p class="text-xl text-gray-700 mb-3 font-semibold">Arraste e solte seu arquivo aqui</p>
+                    <p class="text-lg text-gray-500 mb-6">ou</p>
+                    <label for="fileInput" class="btn-primary text-white px-8 py-4 rounded-xl cursor-pointer inline-flex items-center space-x-2 text-lg font-semibold">
+                        <i class="fas fa-folder-open"></i>
+                        <span>Selecionar Arquivo</span>
+                    </label>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
+                    <p class="text-sm text-gray-500 mt-6">Formatos suportados: <span class="font-semibold text-blue-600">CSV, XLSX, XLS</span></p>
+                    <p class="text-xs text-gray-400 mt-2">Tamanho máximo: <span class="font-semibold">100MB</span></p>
+                    <p class="text-xs text-gray-400 mt-1">Arquivos grandes usam amostragem automática</p>
+                </div>
+
+                <div id="loadingIndicator" class="hidden text-center py-12">
+                    <div class="mb-8">
+                        <!-- Robô Dioguinho Animado -->
+                        <div class="relative inline-block">
+                            <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 relative animate-bounce">
+                                <div class="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+                                    <div class="text-2xl">🤖</div>
+                                </div>
+                                <!-- Olhos animados -->
+                                <div class="absolute top-6 left-6 w-2 h-2 bg-black rounded-full animate-pulse"></div>
+                                <div class="absolute top-6 right-6 w-2 h-2 bg-black rounded-full animate-pulse"></div>
+                                <!-- Antenas -->
+                                <div class="absolute -top-2 left-8 w-1 h-4 bg-gray-600 rounded-full"></div>
+                                <div class="absolute -top-2 right-8 w-1 h-4 bg-gray-600 rounded-full"></div>
+                                <div class="absolute -top-3 left-7 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                                <div class="absolute -top-3 right-7 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                            </div>
+                            <div class="text-center mt-2">
+                                <p class="text-sm font-bold text-purple-600">Dioguinho</p>
+                                <p class="text-xs text-gray-500">Analisando...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-xl text-gray-700 font-semibold">Dioguinho está processando seus dados...</p>
+                    <p class="text-sm text-gray-500 mt-2">Isso pode levar alguns instantes</p>
+                    <button onclick="cancelProcessing()" class="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                        <i class="fas fa-stop mr-2"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="resultsSection" class="hidden fade-in">
+            <div class="flex justify-center mb-8 space-x-4">
+                <button onclick="novaAnalise()" class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 flex items-center space-x-2 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Nova Análise</span>
+                </button>
+                <button onclick="salvarAnalise()" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 flex items-center space-x-2 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                    <i class="fas fa-camera"></i>
+                    <span>Salvar Análise</span>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-2xl card-shadow p-6 border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Estatísticas Gerais</h3>
+                        <div class="bg-blue-100 p-2 rounded-lg">
+                            <i class="fas fa-chart-bar text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div id="generalStats" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl card-shadow p-6 border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Colunas Numéricas</h3>
+                        <div class="bg-green-100 p-2 rounded-lg">
+                            <i class="fas fa-hashtag text-green-600"></i>
+                        </div>
+                    </div>
+                    <div id="numericColumns" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl card-shadow p-6 border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Colunas de Texto</h3>
+                        <div class="bg-purple-100 p-2 rounded-lg">
+                            <i class="fas fa-font text-purple-600"></i>
+                        </div>
+                    </div>
+                    <div id="textColumns" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl card-shadow p-8 mb-8 border border-gray-100">
+                <h3 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+                    <i class="fas fa-chart-line text-blue-600 mr-3"></i>
+                    Análise Inteligente por Dioguinho
+                </h3>
+                <div id="aiAnalysis" class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-3">
+                        <i class="fas fa-brain text-purple-600 mr-2"></i>
+                        Insights da Análise
+                    </h4>
+                    <div id="aiInsights" class="text-gray-700"></div>
+                </div>
+                <div id="chartsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+            </div>
+
+            <div class="bg-white rounded-2xl card-shadow p-8 border border-gray-100">
+                <h3 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+                    <i class="fas fa-table text-green-600 mr-3"></i>
+                    Amostra de Dados
+                </h3>
+                <div class="overflow-x-auto">
+                    <table id="dataTable" class="min-w-full table-auto">
+                        <thead class="bg-gray-100"></thead>
+                        <tbody class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="gradient-bg text-white py-8 mt-16">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-xl font-bold mb-2">Data AI Analyzer</p>
+                    <p class="text-sm opacity-90">Análise de Dados com Inteligência Artificial</p>
+                </div>
+                <div class="text-center md:text-right">
+                    <p class="font-semibold mb-1">Desenvolvido com ❤️ por Diogo</p>
+                    <p class="text-sm opacity-75">© 2024 Todos os direitos reservados</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsSection = document.getElementById('resultsSection');
+        let charts = [];
+        let isProcessing = false;
+
+        // Função para cancelar processamento
+        function cancelProcessing() {
+            if (isProcessing) {
+                isProcessing = false;
+                loadingIndicator.classList.add('hidden');
+                fileInput.value = '';
+                showNotification('Processamento cancelado', 'info');
+            }
+        }
+
+        // Funções de processamento de arquivos no navegador
+        function parseCSV(file) {
+            return new Promise((resolve, reject) => {
+                // Configuração balanceada para arquivos pequenos e grandes
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    trim: true,
+                    // Otimização apenas para arquivos grandes
+                    chunkSize: file.size > 5 * 1024 * 1024 ? 1024 * 1024 : undefined, // 1MB chunks apenas para >5MB
+                    fastMode: file.size > 10 * 1024 * 1024, // Fast mode apenas para arquivos muito grandes
+                    worker: file.size > 10 * 1024 * 1024, // Worker apenas para arquivos muito grandes
+                    step: file.size > 10 * 1024 * 1024 ? function(results, parser) {
+                        // Progresso apenas para arquivos muito grandes
+                        if (results.data.length % 10000 === 0) {
+                            console.log('Processed:', results.data.length, 'rows');
+                        }
+                    } : undefined,
+                    complete: function(results) {
+                        console.log('CSV parsing completed. Total rows:', results.data.length);
+                        resolve(results.data);
+                    },
+                    error: function(error) {
+                        console.error('CSV parsing error:', error);
+                        reject(error);
+                    }
+                });
+            });
+        }
+
+        function parseExcel(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        console.log('Reading Excel file...');
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        console.log('Excel sheet:', sheetName);
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        console.log('Excel parsing completed. Total rows:', jsonData.length);
+                        resolve(jsonData);
+                    } catch (error) {
+                        console.error('Excel parsing error:', error);
+                        reject(error);
+                    }
+                };
+                reader.onerror = function() {
+                    reject(new Error('Erro ao ler arquivo Excel'));
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function analyzeData(data) {
+            console.log('Starting analysis for', data.length, 'rows');
+            
+            if (!data || data.length === 0) {
+                return { error: 'Nenhum dado disponível para análise' };
+            }
+
+            // Otimização balanceada: rápido para pequenos, eficiente para grandes
+            let sampleSize;
+            if (data.length > 50000) {
+                sampleSize = 5000; // Para arquivos grandes
+            } else if (data.length > 10000) {
+                sampleSize = 2000; // Para arquivos médios
+            } else {
+                sampleSize = data.length; // Para arquivos pequenos - processamento completo
+            }
+            
+            const sampleData = data.length > sampleSize ? data.slice(0, sampleSize) : data;
+            
+            if (data.length > sampleSize) {
+                console.log('Using sample of', sampleSize, 'rows from', data.length, 'total rows');
+            }
+
+            const columns = Object.keys(sampleData[0]);
+            
+            // Verificação rápida de colunas numéricas
+            const numericColumns = columns.filter(col => {
+                return sampleData.every(row => !isNaN(parseFloat(row[col])) && isFinite(row[col]));
+            });
+
+            const textColumns = columns.filter(col => !numericColumns.includes(col));
+
+            const analysis = {
+                totalRows: data.length,
+                totalColumns: columns.length,
+                numericColumns: numericColumns,
+                textColumns: textColumns,
+                columnTypes: {},
+                isSample: data.length > sampleSize
+            };
+
+            // Cálculo de tipos
+            columns.forEach(col => {
+                const uniqueValues = [...new Set(sampleData.map(row => row[col]))];
+                analysis.columnTypes[col] = {
+                    type: numericColumns.includes(col) ? 'numeric' : 'text',
+                    uniqueValues: uniqueValues.length,
+                    sampleValues: uniqueValues.slice(0, 5)
+                };
+            });
+
+            // Estatísticas
+            if (numericColumns.length > 0) {
+                analysis.statistics = {};
+                numericColumns.forEach(col => {
+                    const values = sampleData.map(row => parseFloat(row[col])).filter(val => !isNaN(val));
+                    if (values.length > 0) {
+                        analysis.statistics[col] = {
+                            min: Math.min(...values),
+                            max: Math.max(...values),
+                            mean: values.reduce((a, b) => a + b, 0) / values.length,
+                            median: values.sort((a, b) => a - b)[Math.floor(values.length / 2)]
+                        };
+                    }
+                });
+            }
+
+            console.log('Analysis completed');
+            return analysis;
+        }
+
+        function generateChartConfigurations(analysis, data) {
+            console.log('Generating charts...');
+            const charts = [];
+
+            // Otimização balanceada para gráficos
+            let chartData;
+            if (data.length > 50000) {
+                chartData = data.slice(0, 1000); // Para arquivos grandes
+            } else if (data.length > 10000) {
+                chartData = data.slice(0, 500); // Para arquivos médios
+            } else {
+                chartData = data; // Para arquivos pequenos - dados completos
+            }
+
+            // 1. Gráfico de Barras com Porcentagens
+            if (analysis.numericColumns.length >= 1) {
+                const chartSize = Math.min(chartData.length, 100);
+                const values = chartData.slice(0, chartSize).map(row => parseFloat(row[analysis.numericColumns[0]]));
+                const total = values.reduce((a, b) => a + b, 0);
+                const percentages = values.map(val => ((val / total) * 100).toFixed(1));
+                
+                charts.push({
+                    type: 'bar',
+                    title: `Distribuição de ${analysis.numericColumns[0]} (com %)`,
+                    data: {
+                        labels: chartData.slice(0, chartSize).map((_, index) => `Item ${index + 1}`),
+                        datasets: [{
+                            label: analysis.numericColumns[0],
+                            data: values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    percentages: percentages
+                });
+            }
+
+            // 2. Gráfico de Pizza com Porcentagens
+            if (analysis.textColumns.length >= 1 && analysis.numericColumns.length >= 1) {
+                const aggregatedData = {};
+                const aggregationSample = chartData.slice(0, Math.min(2000, chartData.length));
+                aggregationSample.forEach(row => {
+                    const category = row[analysis.textColumns[0]];
+                    const value = parseFloat(row[analysis.numericColumns[0]]) || 0;
+                    if (!aggregatedData[category]) {
+                        aggregatedData[category] = 0;
+                    }
+                    aggregatedData[category] += value;
+                });
+
+                const sortedCategories = Object.entries(aggregatedData)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                const total = sortedCategories.reduce((sum, [, value]) => sum + value, 0);
+                const percentages = sortedCategories.map(([, value]) => ((value / total) * 100).toFixed(1));
+
+                charts.push({
+                    type: 'pie',
+                    title: `${analysis.numericColumns[0]} por ${analysis.textColumns[0]} (com %)`,
+                    data: {
+                        labels: sortedCategories.map(([category]) => category),
+                        datasets: [{
+                            data: sortedCategories.map(([, value]) => value),
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.6)',
+                                'rgba(54, 162, 235, 0.6)',
+                                'rgba(255, 205, 86, 0.6)',
+                                'rgba(75, 192, 192, 0.6)',
+                                'rgba(153, 102, 255, 0.6)',
+                                'rgba(255, 159, 64, 0.6)',
+                                'rgba(199, 199, 199, 0.6)',
+                                'rgba(83, 102, 255, 0.6)',
+                                'rgba(255, 99, 255, 0.6)',
+                                'rgba(99, 255, 132, 0.6)'
+                            ]
+                        }]
+                    },
+                    percentages: percentages,
+                    categories: sortedCategories.map(([category]) => category)
+                });
+            }
+
+            // 3. Gráfico de Linhas (Tendência)
+            if (analysis.numericColumns.length >= 1) {
+                const lineSize = Math.min(chartData.length, 50);
+                charts.push({
+                    type: 'line',
+                    title: `Tendência de ${analysis.numericColumns[0]}`,
+                    data: {
+                        labels: chartData.slice(0, lineSize).map((_, index) => `Ponto ${index + 1}`),
+                        datasets: [{
+                            label: analysis.numericColumns[0],
+                            data: chartData.slice(0, lineSize).map(row => parseFloat(row[analysis.numericColumns[0]])),
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    }
+                });
+            }
+
+            // 4. Gráfico de Radar (Múltiplas Dimensões)
+            if (analysis.numericColumns.length >= 3) {
+                const radarData = chartData.slice(0, Math.min(10, chartData.length));
+                const avgValues = analysis.numericColumns.map(col => {
+                    const values = radarData.map(row => parseFloat(row[col]) || 0);
+                    return values.reduce((a, b) => a + b, 0) / values.length;
+                });
+
+                charts.push({
+                    type: 'radar',
+                    title: 'Análise Multidimensional',
+                    data: {
+                        labels: analysis.numericColumns,
+                        datasets: [{
+                            label: 'Média das Variáveis',
+                            data: avgValues,
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(153, 102, 255, 1)'
+                        }]
+                    }
+                });
+            }
+
+            // 5. Gráfico de Dispersão Original
+            if (analysis.numericColumns.length >= 2) {
+                const scatterSize = Math.min(chartData.length, 200);
+                charts.push({
+                    type: 'scatter',
+                    title: `${analysis.numericColumns[0]} vs ${analysis.numericColumns[1]}`,
+                    data: {
+                        datasets: [{
+                            label: 'Pontos de Dados',
+                            data: chartData.slice(0, scatterSize).map(row => ({
+                                x: parseFloat(row[analysis.numericColumns[0]]) || 0,
+                                y: parseFloat(row[analysis.numericColumns[1]]) || 0
+                            })),
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    }
+                });
+            }
+
+            // 6. Gráfico de Área (Acumulado)
+            if (analysis.numericColumns.length >= 1) {
+                const areaSize = Math.min(chartData.length, 50);
+                const values = chartData.slice(0, areaSize).map(row => parseFloat(row[analysis.numericColumns[0]]));
+                const accumulated = [];
+                let sum = 0;
+                values.forEach(val => {
+                    sum += val;
+                    accumulated.push(sum);
+                });
+
+                charts.push({
+                    type: 'line',
+                    title: `Acumulado de ${analysis.numericColumns[0]}`,
+                    data: {
+                        labels: chartData.slice(0, areaSize).map((_, index) => `Item ${index + 1}`),
+                        datasets: [{
+                            label: 'Valor Acumulado',
+                            data: accumulated,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: true
+                        }]
+                    }
+                });
+            }
+
+            console.log('Charts generated');
+            return charts;
+        }
+
+        // Event Listeners
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-active');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+            
+            const validExtensions = ['.csv', '.xlsx', '.xls'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validExtensions.includes(fileExtension)) {
+                showNotification('Por favor, envie um arquivo CSV ou Excel válido. Extensões permitidas: ' + validExtensions.join(', '), 'error');
+                return;
+            }
+
+            if (file.size === 0) {
+                showNotification('O arquivo está vazio. Por favor, escolha um arquivo válido.', 'error');
+                return;
+            }
+
+            if (file.size > 100 * 1024 * 1024) { // 100MB limit para arquivos grandes
+                showNotification('O arquivo é muito grande. Por favor, envie um arquivo com menos de 100MB.', 'error');
+                return;
+            }
+
+            await processFile(file);
+        }
+
+        async function processFile(file) {
+            if (isProcessing) {
+                showNotification('Já existe um processamento em andamento', 'error');
+                return;
+            }
+            
+            isProcessing = true;
+            loadingIndicator.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+
+            try {
+                console.log('Starting ultra-fast processing for:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+                
+                // Feedback mais preciso
+                const startTime = Date.now();
+                if (file.size > 50 * 1024 * 1024) { // 50MB
+                    showNotification('Arquivo gigante detectado! Usando otimização máxima...', 'info');
+                } else if (file.size > 20 * 1024 * 1024) { // 20MB
+                    showNotification('Arquivo muito grande... Otimizando processamento...', 'info');
+                } else if (file.size > 5 * 1024 * 1024) { // 5MB
+                    showNotification('Processando arquivo grande...', 'info');
+                }
+                
+                // Verifica se foi cancelado
+                if (!isProcessing) return;
+                
+                let data;
+                const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                
+                if (fileExtension === '.csv') {
+                    data = await parseCSV(file);
+                } else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+                    data = await parseExcel(file);
+                }
+
+                // Verifica se foi cancelado
+                if (!isProcessing) return;
+
+                const processingTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log('Ultra-fast parsing completed in', processingTime, 'seconds. Total rows:', data.length);
+                
+                if (data.length === 0) {
+                    showNotification('Nenhum dado encontrado no arquivo', 'error');
+                    return;
+                }
+
+                // Análise sequencial para evitar dependência circular
+                const analysis = analyzeData(data);
+                console.log('Analysis completed');
+                
+                // Verifica se foi cancelado
+                if (!isProcessing) return;
+                
+                const charts = generateChartConfigurations(analysis, data);
+                console.log('Charts generated');
+
+                // Verifica se foi cancelado
+                if (!isProcessing) return;
+
+                displayResults(data, analysis, charts);
+                
+                let message = `Análise concluída em ${processingTime}s! ${data.length.toLocaleString()} linhas processadas.`;
+                if (analysis.isSample) {
+                    message += ' (Otimização automática aplicada)';
+                }
+                showNotification(message, 'success');
+                
+            } catch (error) {
+                console.error('Error processing file:', error);
+                showNotification('Erro ao processar arquivo: ' + error.message, 'error');
+            } finally {
+                // Garante que o loading seja escondido e o processamento finalize
+                isProcessing = false;
+                loadingIndicator.classList.add('hidden');
+                fileInput.value = '';
+            }
+        }
+
+        function displayResults(data, analysis, charts) {
+            displayGeneralStats(analysis);
+            displayColumns(analysis);
+            displayCharts(charts);
+            displayDataTable(data.slice(0, 10));
+            displayAIInsights(analysis, data);
+            
+            resultsSection.classList.remove('hidden');
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayAIInsights(analysis, data) {
+            const insightsContainer = document.getElementById('aiInsights');
+            let insights = [];
+
+            // Insights baseados nos dados
+            if (analysis.totalRows > 0) {
+                insights.push(`📊 Analisei ${analysis.totalRows.toLocaleString()} registros com ${analysis.totalColumns} variáveis.`);
+            }
+
+            if (analysis.numericColumns.length > 0) {
+                insights.push(`🔢 Identifiquei ${analysis.numericColumns.length} colunas numéricas para análise estatística.`);
+                
+                // Insight sobre a primeira coluna numérica
+                const firstNumeric = analysis.numericColumns[0];
+                if (analysis.statistics[firstNumeric]) {
+                    const stats = analysis.statistics[firstNumeric];
+                    const range = stats.max - stats.min;
+                    insights.push(`📈 A variável '${firstNumeric}' varia de ${stats.min.toFixed(2)} a ${stats.max.toFixed(2)}, com média de ${stats.mean.toFixed(2)}.`);
+                    
+                    if (range > stats.mean) {
+                        insights.push(`⚠️ Alta variabilidade detectada em '${firstNumeric}' - os dados estão bem distribuídos.`);
+                    } else {
+                        insights.push(`✅ Baixa variabilidade em '${firstNumeric}' - os dados são consistentes.`);
+                    }
+                }
+            }
+
+            if (analysis.textColumns.length > 0) {
+                insights.push(`📝 Encontrei ${analysis.textColumns.length} colunas categóricas para análise.`);
+                
+                // Insight sobre a coluna de texto com mais variedade
+                const textColumnWithMostVariety = analysis.textColumns.reduce((max, col) => {
+                    return analysis.columnTypes[col].uniqueValues > analysis.columnTypes[max].uniqueValues ? col : max;
+                }, analysis.textColumns[0]);
+                
+                const uniqueCount = analysis.columnTypes[textColumnWithMostVariety].uniqueValues;
+                insights.push(`🏷️ '${textColumnWithMostVariety}' tem ${uniqueCount} valores únicos, mostrando grande diversidade.`);
+            }
+
+            // Insights sobre o tamanho do dataset
+            if (analysis.totalRows < 100) {
+                insights.push(`🔍 Dataset pequeno detectado - ideal para análise detalhida de cada registro.`);
+            } else if (analysis.totalRows > 10000) {
+                insights.push(`🚀 Dataset grande detectado - usei amostragem inteligente para manter a performance.`);
+            }
+
+            // Insights sobre a qualidade dos dados
+            const numericRatio = analysis.numericColumns.length / analysis.totalColumns;
+            if (numericRatio > 0.7) {
+                insights.push(`💡 Dataset predominantemente numérico (${(numericRatio * 100).toFixed(0)}%) - ótimo para análises estatísticas.`);
+            } else if (numericRatio < 0.3) {
+                insights.push(`📊 Dataset predominantemente categórico - ideal para análises de segmentação.`);
+            }
+
+            // Recomendações
+            if (analysis.numericColumns.length >= 2) {
+                insights.push(`🎯 Com ${analysis.numericColumns.length} variáveis numéricas, você pode fazer análises de correlação.`);
+            }
+
+            if (analysis.textColumns.length >= 1 && analysis.numericColumns.length >= 1) {
+                insights.push(`📈 Você pode agrupar dados por '${analysis.textColumns[0]}' para análises comparativas.`);
+            }
+
+            insightsContainer.innerHTML = insights.map(insight => `
+                <div class="mb-2 p-2 bg-white rounded border-l-4 border-blue-400">
+                    <p class="text-sm">${insight}</p>
+                </div>
+            `).join('');
+        }
+
+        function displayGeneralStats(analysis) {
+            const container = document.getElementById('generalStats');
+            let statsHtml = `
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-600">Total de Linhas:</span>
+                    <span class="font-semibold">${analysis.totalRows.toLocaleString()}</span>
+                </div>
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-600">Total de Colunas:</span>
+                    <span class="font-semibold">${analysis.totalColumns}</span>
+                </div>
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-600">Colunas Numéricas:</span>
+                    <span class="font-semibold text-green-600">${analysis.numericColumns.length}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Colunas de Texto:</span>
+                    <span class="font-semibold text-purple-600">${analysis.textColumns.length}</span>
+                </div>
+            `;
+            
+            if (analysis.isSample) {
+                statsHtml += `
+                    <div class="mt-3 p-2 bg-yellow-50 rounded-lg">
+                        <p class="text-xs text-yellow-800">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Usando amostra para análise otimizada
+                        </p>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = statsHtml;
+        }
+
+        function displayColumns(analysis) {
+            const numericContainer = document.getElementById('numericColumns');
+            const textContainer = document.getElementById('textColumns');
+
+            numericContainer.innerHTML = analysis.numericColumns.map(col => `
+                <div class="bg-green-50 p-2 rounded">
+                    <span class="text-sm font-medium text-green-800">${col}</span>
+                    ${analysis.statistics[col] ? `
+                        <div class="text-xs text-gray-600 mt-1">
+                            Média: ${analysis.statistics[col].mean.toFixed(2)}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+
+            textContainer.innerHTML = analysis.textColumns.map(col => `
+                <div class="bg-purple-50 p-2 rounded">
+                    <span class="text-sm font-medium text-purple-800">${col}</span>
+                    <div class="text-xs text-gray-600 mt-1">
+                        ${analysis.columnTypes[col].uniqueValues} valores únicos
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayCharts(chartConfigs) {
+            const container = document.getElementById('chartsContainer');
+            container.innerHTML = '';
+
+            charts.forEach(chart => chart.destroy());
+            charts = [];
+
+            chartConfigs.forEach((config, index) => {
+                const chartDiv = document.createElement('div');
+                chartDiv.className = 'bg-gray-50 p-4 rounded-lg mb-6';
+                chartDiv.style.backgroundColor = '#f9fafb';
+                chartDiv.style.border = '1px solid #e5e7eb';
+                chartDiv.style.borderRadius = '8px';
+                
+                let chartHTML = `
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4 text-center">${config.title}</h4>
+                    <div class="chart-container" style="height: 400px !important; background: white !important; padding: 10px !important; border: 1px solid #e5e7eb !important; border-radius: 8px !important;">
+                        <canvas id="chart-${index}" style="display: block !important; width: 100% !important; height: 380px !important;"></canvas>
+                    </div>
+                `;
+
+                // Adiciona explicação e porcentagens para gráficos de pizza
+                if (config.type === 'pie' && config.percentages && config.categories) {
+                    chartHTML += `
+                        <div class="mt-4 p-3 bg-white rounded-lg border">
+                            <h5 class="font-semibold text-gray-700 mb-2">Distribuição Percentual:</h5>
+                            <div class="space-y-1">
+                                ${config.categories.map((cat, i) => `
+                                    <div class="flex justify-between text-sm">
+                                        <span class="font-medium">${cat}:</span>
+                                        <span class="text-gray-600">${config.percentages[i]}%</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Adiciona insights para gráficos de barras
+                if (config.type === 'bar' && config.percentages) {
+                    const maxPercentage = Math.max(...config.percentages);
+                    const maxIndex = config.percentages.indexOf(maxPercentage.toString());
+                    chartHTML += `
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p class="text-sm text-blue-800">
+                                <i class="fas fa-lightbulb mr-1"></i>
+                                <strong>Insight:</strong> O Item ${maxIndex + 1} representa ${maxPercentage}% do total, sendo o mais significativo.
+                            </p>
+                        </div>
+                    `;
+                }
+
+                chartDiv.innerHTML = chartHTML;
+                container.appendChild(chartDiv);
+
+                // Força o canvas a ser visível
+                setTimeout(() => {
+                    const canvas = document.getElementById(`chart-${index}`);
+                    if (canvas) {
+                        canvas.style.display = 'block';
+                        canvas.style.width = '100%';
+                        canvas.style.height = '380px';
+                        canvas.style.backgroundColor = 'white';
+                        
+                        const ctx = canvas.getContext('2d');
+                        
+                        const chart = new Chart(ctx, {
+                            type: config.type,
+                            data: config.data,
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: {
+                                    duration: 1000,
+                                    easing: 'easeInOutQuart'
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: {
+                                            font: {
+                                                size: 12
+                                            }
+                                        }
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                let label = context.dataset.label || '';
+                                                if (label) {
+                                                    label += ': ';
+                                                }
+                                                if (config.percentages && config.type === 'pie') {
+                                                    label += context.parsed + ' (' + config.percentages[context.dataIndex] + '%)';
+                                                } else if (config.percentages && config.type === 'bar') {
+                                                    label += context.parsed + ' (' + config.percentages[context.dataIndex] + '%)';
+                                                } else {
+                                                    label += context.parsed;
+                                                }
+                                                return label;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: config.type !== 'pie' && config.type !== 'doughnut' && config.type !== 'radar' ? {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: {
+                                            display: true,
+                                            color: '#e5e7eb'
+                                        }
+                                    },
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        }
+                                    }
+                                } : {}
+                            }
+                        });
+                        charts.push(chart);
+                    }
+                }, 100);
+            });
+        }
+
+        function displayDataTable(data) {
+            if (!data || data.length === 0) return;
+
+            const table = document.getElementById('dataTable');
+            const thead = table.querySelector('thead');
+            const tbody = table.querySelector('tbody');
+
+            const columns = Object.keys(data[0]);
+
+            thead.innerHTML = `
+                <tr>
+                    ${columns.map(col => `<th class="px-4 py-2 text-left text-sm font-medium text-gray-700">${col}</th>`).join('')}
+                </tr>
+            `;
+
+            tbody.innerHTML = data.map(row => `
+                <tr class="hover:bg-gray-50">
+                    ${columns.map(col => `<td class="px-4 py-2 text-sm text-gray-600">${row[col] || ''}</td>`).join('')}
+                </tr>
+            `).join('');
+        }
+
+        function showNotification(message, type = 'info') {
+            console.log('Notification:', message, type);
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-xl shadow-2xl z-50 fade-in max-w-sm ${
+                type === 'error' ? 'bg-red-500 text-white' : 
+                type === 'success' ? 'bg-green-500 text-white' : 
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        type === 'success' ? 'fa-check-circle' : 
+                        'fa-info-circle'
+                    } mr-3 text-xl"></i>
+                    <span class="font-medium">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+
+        function novaAnalise() {
+            try {
+                // Limpa todos os gráficos
+                charts.forEach(chart => {
+                    if (chart && typeof chart.destroy === 'function') {
+                        chart.destroy();
+                    }
+                });
+                charts = [];
+                
+                // Esconde a seção de resultados
+                resultsSection.classList.add('hidden');
+                
+                // Limpa o input de arquivo
+                fileInput.value = '';
+                
+                // Esconde o loading se estiver visível
+                loadingIndicator.classList.add('hidden');
+                
+                // Volta para o topo
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                showNotification('Pronto para uma nova análise!', 'info');
+            } catch (error) {
+                console.error('Error in novaAnalise:', error);
+                // Força reset mesmo com erro
+                charts = [];
+                resultsSection.classList.add('hidden');
+                loadingIndicator.classList.add('hidden');
+                fileInput.value = '';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function salvarAnalise() {
+            try {
+                showNotification('📸 Capturando análise...', 'info');
+                
+                // Adiciona fundo branco temporário
+                const resultsSection = document.getElementById('resultsSection');
+                const originalBg = resultsSection.style.backgroundColor;
+                resultsSection.style.backgroundColor = '#ffffff';
+                
+                // Garante que todos os elementos filhos tenham fundo visível
+                const allElements = resultsSection.querySelectorAll('*');
+                allElements.forEach(el => {
+                    if (getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)' || 
+                        getComputedStyle(el).backgroundColor === 'transparent') {
+                        el.style.backgroundColor = '#ffffff';
+                    }
+                });
+                
+                html2canvas(resultsSection, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    width: resultsSection.scrollWidth,
+                    height: resultsSection.scrollHeight,
+                    logging: false,
+                    removeContainer: false,
+                    windowWidth: resultsSection.scrollWidth,
+                    windowHeight: resultsSection.scrollHeight,
+                    x: 0,
+                    y: 0
+                }).then(canvas => {
+                    // Restaura o fundo original
+                    resultsSection.style.backgroundColor = originalBg;
+                    allElements.forEach(el => {
+                        el.style.backgroundColor = '';
+                    });
+                    
+                    // Adiciona fundo branco no canvas se necessário
+                    const ctx = canvas.getContext('2d');
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Converte para imagem e baixa
+                    canvas.toBlob((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `analise-dados-dioguinho-${Date.now()}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        showNotification('✅ Análise salva com sucesso!', 'success');
+                    }, 'image/png', 1.0);
+                    
+                }).catch(error => {
+                    console.error('Erro ao capturar tela:', error);
+                    // Restaura o fundo original em caso de erro
+                    resultsSection.style.backgroundColor = originalBg;
+                    allElements.forEach(el => {
+                        el.style.backgroundColor = '';
+                    });
+                    
+                    showNotification('❌ Erro ao capturar a tela. Tentando método alternativo...', 'error');
+                    salvarGraficosAlternativo();
+                });
+                
+            } catch (error) {
+                console.error('Error saving analysis:', error);
+                showNotification('❌ Erro ao salvar análise', 'error');
+            }
+        }
+
+        function salvarGraficosAlternativo() {
+            try {
+                const chartsContainer = document.getElementById('chartsContainer');
+                
+                // Adiciona fundo branco ao container
+                const originalBg = chartsContainer.style.backgroundColor;
+                chartsContainer.style.backgroundColor = '#ffffff';
+                
+                html2canvas(chartsContainer, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                }).then(canvas => {
+                    // Restaura o fundo original
+                    chartsContainer.style.backgroundColor = originalBg;
+                    
+                    // Garante fundo branco no canvas
+                    const ctx = canvas.getContext('2d');
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    canvas.toBlob((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `graficos-analise-${Date.now()}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        showNotification('✅ Gráficos salvos com sucesso!', 'success');
+                    }, 'image/png', 1.0);
+                });
+                
+            } catch (error) {
+                console.error('Erro no método alternativo:', error);
+                showNotification('❌ Erro ao salvar. Tente novamente.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
